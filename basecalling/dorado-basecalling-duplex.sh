@@ -6,50 +6,44 @@
 #SBATCH -C A100
 #SBATCH --cpus-per-task 32
 #SBATCH --gres gpu:4
-#SBATCH --mem=140G
-#SBATCH -t 0-24:00
+#SBATCH --mem=32G
+#SBATCH -t 0-36:00
 #SBATCH --job-name="dorado_duplex_basecalling"
-#SBATCH --mail-type=FAIL
-#SBATCH --mail-user=denriquez@tgen.org
+#SBATCH -o dorado_duplex_%j.out
 #SBATCH --profile=ltask
 #SBATCH --acctg-freq=task=1
 
-sbatch -n1 -d$SLURM_JOB_ID --wrap="sh5util -j $SLURM_JOB_ID"
+sbatch -n1 -d$SLURM_JOB_ID --wrap="sh5util -j $SLURM_JOB_ID -o profiling_dorado_duplex_${SLURM_JOB_ID}.h5"
 
-module load singularity
-module load SAMtools
+module load singularity/3.8.6
+module load SAMtools/1.10-Container
 export CUDA_MODULE_LOADING=LAZY
 export SINGULARITYENV_CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
 
-PATH_TO_SCRIPTS=$1
-NAME=$2
-PATH_TO_POD5=$3
+NAME=$1
+RUNFOLDER_NAME=$2
+PATH_TO_SCRIPTS=$3
+OUTDIR=$4
+THREADS=31
 
 source ${PATH_TO_SCRIPTS}/setup.conf
 
-PATH_TO_POD5_PARENT=$(dirname $PATH_TO_POD5)
-MODEL_BASE_TMP=$(basename ${PATH_TO_MODEL})
-MODEL_BASE=${MODEL_BASE_TMP//@/_}
-BATCH_SIZE=448
-extension="unmap.duplex.bam"
-THREADS=31
+PATH_TO_POD5=${SEQUENCING_BASE_PATH}/${RUNFOLDER_NAME}/merged_pod5
 
-echo "############################################"
-echo "The following arguments were provided or predicted:"
+echo
 echo "NAME=$NAME"
 echo "PATH_TO_POD5=$PATH_TO_POD5"
 echo "PATH_TO_MODEL=$PATH_TO_MODEL"
-echo "############################################"
+echo
 
 # Set up directory OUT_SUBDIR
-cd "$(dirname ${PATH_TO_POD5})" || exit 1
-if [ ! -d ${OUT_SUBDIR} ]
+cd ${OUTDIR} || exit 1
+if [ ! -d ${OUT_SUBDIR}/${RUNFOLDER_NAME} ]
 then
-  mkdir -p ${OUT_SUBDIR}
+  mkdir -p ${OUT_SUBDIR}/${RUNFOLDER_NAME}
 fi
-cd ${OUT_SUBDIR} || exit 1
+cd ${OUT_SUBDIR}/${RUNFOLDER_NAME} || exit 1
 
-# Duplex calling
 echo
 echo "Starting Duplex Basecalling"
 echo
@@ -58,19 +52,19 @@ time singularity exec --bind $BIND --pwd $PWD --workdir /tmp --cleanenv --contai
 	${PATH_TO_MODEL} \
 	${PATH_TO_POD5} \
 	--threads ${THREADS} \
-	-b ${BATCH_SIZE} > ${NAME}.${extension}
+	-b ${BATCH_SIZE} > ${NAME}.${DUPLEX_EXTENSION}
 
 if [ $? -eq 0 ]
 then
-    samtools index ${NAME}.${extension}
+    samtools index ${NAME}.${DUPLEX_EXTENSION}
     if [ $? -ne 0 ]
     then
       exit 1
     fi
-    md5sum ${NAME}.${extension} > ${NAME}.${extension}.md5
-    md5sum ${NAME}.${extension}.bai > ${NAME}.${extension}.bai.md5
+    md5sum ${NAME}.${DUPLEX_EXTENSION} > ${NAME}.${DUPLEX_EXTENSION}.md5
+    md5sum ${NAME}.${DUPLEX_EXTENSION}.bai > ${NAME}.${DUPLEX_EXTENSION}.bai.md5
 fi
 
 echo
-echo "################# Done! #################"
+echo "Complete!"
 
