@@ -4,16 +4,12 @@
 #SBATCH --nodes 1
 #SBATCH --partition=gpu
 #SBATCH -C A100
-#SBATCH --cpus-per-task 32
+#SBATCH --cpus-per-task 28
 #SBATCH --gres gpu:4
-#SBATCH --mem=145G
+#SBATCH --mem=150G
 #SBATCH -t 0-24:00
 #SBATCH -o dorado_modbase_%j.out
 #SBATCH --job-name="dorado_modbase_basecalling"
-#SBATCH --profile=ltask
-#SBATCH --acctg-freq=task=1
-
-sbatch -n1 -d$SLURM_JOB_ID --wrap="sh5util -j $SLURM_JOB_ID -o profiling_dorado_modbase_${SLURM_JOB_ID}.h5"
 
 module load singularity/3.8.6
 module load SAMtools/1.10-Container
@@ -54,6 +50,7 @@ echo "    --modified-bases ${MODIFIED_BASES} > ${NAME}.${MODBASE_EXTENSION}"
 
 time singularity exec --bind $BIND --pwd $PWD --workdir /tmp --cleanenv --contain --nv ${DORADO_CONTAINER} dorado \
 	basecaller \
+	-v \
 	${PATH_TO_MODEL} \
 	${PATH_TO_POD5} \
 	--modified-bases ${MODIFIED_BASES} > ${NAME}.${MODBASE_EXTENSION}
