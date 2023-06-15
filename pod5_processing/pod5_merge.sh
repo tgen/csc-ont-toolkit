@@ -3,7 +3,7 @@
 #SBATCH --job-name=pod5_merge
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -t 0-8:00
+#SBATCH -t 0-16:00
 #SBATCH --cpus-per-task 24
 #SBATCH --mem=34G
 
